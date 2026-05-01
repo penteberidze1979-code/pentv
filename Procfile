@@ -1,1 +1,1 @@
-web: gunicorn pppp:app
+web: python pppp.py
