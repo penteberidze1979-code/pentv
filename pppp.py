@@ -18,6 +18,8 @@ import threading
 from flask import Flask, Response, jsonify, render_template_string, request
 from flask_compress import Compress
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ==========================================
 # TITAN OMEGA X-1: SUPREME ENGINE V5.0
