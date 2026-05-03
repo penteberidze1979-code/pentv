@@ -1,14 +1,44 @@
-[NEURAL_PULSE]
+import requests
+import asyncio
+import aiohttp
+import re
+import os
+import time
+import json
+import psutil
+import random
+import gzip
+import sys
+import socket
+from datetime import datetime
+from flask import Flask, render_template_string, request, jsonify, Response
+from flask_cors import CORS
+
+# --- CONFIGURATION ---
+class Config:
+    APP_PORT = 10000  # Render-ისთვის ხშირად 10000 გამოიყენება
+    SD_KEYWORDS = ["sd", "480p", "360p", "240p", "low", "medium", "lite", "smooth", "eco", "basic", "standard"]
+    HD_KEYWORDS = ["hd", "1080p", "720p", "fhd", "4k", "uhd", "high", "ultra"]
+    GLOBAL_SOURCES = [
+        "https://iptv-org.github.io/iptv/languages/kat.m3u",
+        "https://iptv-org.github.io/iptv/languages/rus.m3u",
+        "https://iptv-org.github.io/iptv/index.m3u",
+        "https://raw.githubusercontent.com/LITUATUI/IPTV/main/GE.m3u"
+    ]
+    UA_POOL = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Linux; Android 13; SM-S908B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36"
+    ]
+    CONCURRENCY_LIMIT = 500
+
+# --- UI TEMPLATE (HTML) ---
+INDEX_HTML = """
 <!DOCTYPE html>
 <html lang="ka">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TITAN OMEGA X-1 | V12 SUPREME ARCHITECT</title>
-    <!-- 
-    INSTALLATION: pip install flask flask-cors requests aiohttp psutil 
-    CDN_DEPENDENCIES: https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+Georgian:wght@400;700&display=swap 
-    -->
+    <title>TITAN OMEGA X-1 | V12 SUPREME</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+Georgian:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root { --neon: #00f2ff; --bg: #020205; --panel: #0a0a1a; --text: #e0e0e0; --success: #00ff88; --danger: #ff2d55; --warning: #ffcc00; }
@@ -59,7 +89,6 @@
             <span>V12 EVO</span>
         </div>
     </div>
-
     <script>
         async function update() {
             try {
@@ -74,35 +103,24 @@
             } catch(e) {}
         }
         setInterval(update, 3000);
-
         async function process() {
             const u = document.getElementById('url').value;
             if(!u) return;
             document.getElementById('res').value = "⚡ INITIATING DEEP SCAN...";
-            const r = await fetch('/process', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({url: u, mode: 'all'}) 
-            });
+            const r = await fetch('/process', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: u, mode: 'all'}) });
             const d = await r.json();
             document.getElementById('res').value = d.result;
         }
-
         async function uiAction(mode) {
             const u = document.getElementById('url').value || "GLOBAL_SCAN";
             document.getElementById('res').value = `⚡ UI_CONTROLLER: RENDER_${mode.toUpperCase()}_ACTION...`;
-            const r = await fetch('/process', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({url: u, mode: mode}) 
-            });
+            const r = await fetch('/process', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: u, mode: mode}) });
             const d = await r.json();
             document.getElementById('res').value = d.result;
         }
-
         function copyLink() {
             const text = document.getElementById('res').value;
-            const linkMatch = text.match(/https?:\/\/[^\s]+/);
+            const linkMatch = text.match(/https?:\\/\\/[^\\s]+/);
             if(linkMatch) {
                 navigator.clipboard.writeText(linkMatch[0]);
                 alert("ClipboardProvider: Link Exported!");
@@ -115,42 +133,9 @@
     </script>
 </body>
 </html>
+"""
 
-```python
-import requests
-import asyncio
-import aiohttp
-import re
-import os
-import time
-import json
-import psutil
-import random
-import gzip
-import sys
-import socket
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, Response
-from flask_cors import CORS
-from threading import Timer
-
-class Config:
-    APP_PORT = 5000
-    SD_KEYWORDS = ["sd", "480p", "360p", "240p", "low", "medium", "lite", "smooth", "eco", "basic", "standard"]
-    HD_KEYWORDS = ["hd", "1080p", "720p", "fhd", "4k", "uhd", "high", "ultra"]
-    GLOBAL_SOURCES = [
-        "https://iptv-org.github.io/iptv/languages/kat.m3u",
-        "https://iptv-org.github.io/iptv/languages/rus.m3u",
-        "https://iptv-org.github.io/iptv/index.m3u",
-        "https://raw.githubusercontent.com/LITUATUI/IPTV/main/GE.m3u"
-    ]
-    UA_POOL = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Linux; Android 13; SM-S908B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36"
-    ]
-    CONCURRENCY_LIMIT = 500
-
-# --- 1. მონაცემთა მოპოვება და სკანირება ---
+# --- LOGIC CLASSES ---
 class SourceManager:
     @staticmethod
     async def fetch_raw_payload(session, url):
@@ -159,98 +144,40 @@ class SourceManager:
             async with session.get(url, headers=headers, timeout=10) as r:
                 if r.status == 200:
                     content = await r.read()
-                    if r.headers.get('Content-Encoding') == 'gzip' or content.startswith(b'\x1f\x8b'):
+                    if r.headers.get('Content-Encoding') == 'gzip' or content.startswith(b'\\x1f\\x8b'):
                         return gzip.decompress(content).decode('utf-8', errors='ignore')
                     return content.decode('utf-8', errors='ignore')
         except: return ""
         return ""
 
-class NetworkDiscovery:
-    @staticmethod
-    async def identify_active_nodes(session, url):
-        try:
-            async with session.head(url, timeout=5) as r:
-                return r.status == 200
-        except: return False
-
 class GlobalScanner:
     @staticmethod
-    async def initiate_deep_scan(core, session, url):
+    async def initiate_deep_scan(session, url):
         payload = await SourceManager.fetch_raw_payload(session, url)
-        found = re.findall(r'#EXTINF:.*?,(.*?)\n(http[s]?://[^\s]+)', payload)
-        valid_nodes = []
-        for name, link in found:
-            valid_nodes.append({"name": name.strip(), "url": link.strip()})
-        return valid_nodes
+        found = re.findall(r'#EXTINF:.*?,(.*?)\\n(http[s]?://[^\\s]+)', payload)
+        return [{"name": name.strip(), "url": link.strip()} for name, link in found]
 
-# --- 2. ხარისხის ფილტრაცია და ტრანსფორმაცია ---
-class ResolutionValidator:
+class QualityEngine:
     @staticmethod
-    def verify_bitrate(url):
-        # სიმულაციური ვალიდაცია
-        return "bandwidth" in url.lower() or ".m3u8" in url.lower()
+    def filter_sd_streams(nodes):
+        return [n for n in nodes if any(k in n['url'].lower() or k in n['name'].lower() for k in Config.SD_KEYWORDS)]
+    @staticmethod
+    def filter_hd_streams(nodes):
+        return [n for n in nodes if any(k in n['url'].lower() or k in n['name'].lower() for k in Config.HD_KEYWORDS)]
 
 class StreamProcessor:
     @staticmethod
     def downscale_to_sd_logic(url):
         return url.replace("1080", "480").replace("720", "480").replace("FHD", "SD").replace("HD", "SD")
 
-class QualityEngine:
-    @staticmethod
-    def filter_sd_streams(nodes):
-        return [n for n in nodes if any(k in n['url'].lower() or k in n['name'].lower() for k in Config.SD_KEYWORDS)]
-    
-    @staticmethod
-    def filter_hd_streams(nodes):
-        return [n for n in nodes if any(k in n['url'].lower() or k in n['name'].lower() for k in Config.HD_KEYWORDS)]
-
-# --- 3. სინტაქსური და გრაფიკული დამუშავება ---
-class MetadataExtractor:
-    @staticmethod
-    def parse_channel_logos(text):
-        logos = re.findall(r'tvg-logo="(.*?)"', text)
-        return logos[0] if logos else ""
-
 class IdentityManager:
     @staticmethod
     def assign_group_by_country(name):
         name = name.upper()
         if any(x in name for x in ['GE', 'GEO', 'KA', 'ქართული']): return "GEORGIAN"
-        if any(x in name for x in ['RU', 'RUS', 'РОССИЯ']): return "RUSSIAN"
+        if any(x in name for x in ['RU', 'RUS', 'РОССიЯ']): return "RUSSIAN"
         return "INTERNATIONAL"
 
-class DataOrganizer:
-    @staticmethod
-    def count_category_totals(nodes):
-        stats = {}
-        for n in nodes:
-            grp = IdentityManager.assign_group_by_country(n['name'])
-            stats[grp] = stats.get(grp, 0) + 1
-        return stats
-
-# --- 4. ვალიდაცია და "ცოცხალი" სტატუსი ---
-class HealthGuard:
-    @staticmethod
-    async def verify_live_connectivity(session, url):
-        return await NetworkDiscovery.identify_active_nodes(session, url)
-
-class Validator:
-    @staticmethod
-    async def purge_dead_streams(core, nodes):
-        core.log("HealthGuard: Purging dead streams...", "VALIDATOR")
-        active = []
-        async with aiohttp.ClientSession() as session:
-            for n in nodes[:100]: # ლიმიტირებული შემოწმება სისწრაფისთვის
-                if await HealthGuard.verify_live_connectivity(session, n['url']):
-                    active.append(n)
-        return active
-
-class AutoRefresh:
-    @staticmethod
-    def generate_dynamic_link(local_ip, port):
-        return f"http://{local_ip}:{port}/playlist.m3u"
-
-# --- 5. ავტონომიური სისტემა ---
 class OutputEngine:
     @staticmethod
     def generate_self_updating_manifest(nodes):
@@ -259,35 +186,14 @@ class OutputEngine:
             grp = IdentityManager.assign_group_by_country(n['name'])
             m3u.append(f'#EXTINF:-1 group-title="{grp}",{n["name"]}')
             m3u.append(n['url'])
-        return "\n".join(m3u)
+        return "\\n".join(m3u)
 
-class SelfHealing:
-    @staticmethod
-    async def recursive_update_cycle(core):
-        while True:
-            try:
-                core.health_status = "სკანირება"
-                async with aiohttp.ClientSession() as session:
-                    all_nodes = []
-                    for src in Config.GLOBAL_SOURCES:
-                        nodes = await GlobalScanner.initiate_deep_scan(core, session, src)
-                        all_nodes.extend(nodes)
-                    core.global_db = all_nodes
-                    core.log(f"SelfHealing: Cycle Complete. Nodes: {len(all_nodes)}", "CORE")
-                core.health_status = "ოპტიმიზირებული"
-                await asyncio.sleep(1800)
-            except Exception as e:
-                core.log(f"SelfHealing Error: {str(e)}", "ERROR")
-                await asyncio.sleep(60)
-
-# --- TITAN CORE ORCHESTRATOR ---
 class TitanCore:
     def __init__(self):
         self.global_db = []
         self.logs = []
         self.health_status = "INIT"
         self.start_time = datetime.now()
-        self.semaphore = asyncio.Semaphore(Config.CONCURRENCY_LIMIT)
 
     def log(self, msg, level="INFO"):
         t = datetime.now().strftime("%H:%M:%S")
@@ -301,12 +207,27 @@ class TitanCore:
         except: cpu, ram = "N/A", "N/A"
         return {"cpu": cpu, "ram": ram, "uptime": str(datetime.now() - self.start_time).split('.')[0], "nodes": len(self.global_db)}
 
+# --- APP INITIALIZATION ---
 core = TitanCore()
 app = Flask(__name__)
 CORS(app)
 
+async def recursive_update_cycle():
+    while True:
+        core.health_status = "სკანირება"
+        async with aiohttp.ClientSession() as session:
+            all_nodes = []
+            for src in Config.GLOBAL_SOURCES:
+                nodes = await GlobalScanner.initiate_deep_scan(session, src)
+                all_nodes.extend(nodes)
+            core.global_db = all_nodes
+            core.log(f"SelfHealing: Cycle Complete. Nodes: {len(all_nodes)}", "CORE")
+        core.health_status = "ოპტიმიზირებული"
+        await asyncio.sleep(1800)
+
 @app.route('/')
-def index(): return render_template('index.html') # Note: In this single-file delivery, INDEX_HTML is used.
+def index():
+    return render_template_string(INDEX_HTML)
 
 @app.route('/status')
 def status():
@@ -317,12 +238,11 @@ async def handle():
     data = request.json
     user_url = data.get('url', '')
     mode = data.get('mode', 'all')
-    
     core.log(f"UIController: Action {mode.upper()} triggered", "UI_BRIDGE")
     
     async with aiohttp.ClientSession() as session:
         if "http" in user_url:
-            nodes = await GlobalScanner.initiate_deep_scan(core, session, user_url)
+            nodes = await GlobalScanner.initiate_deep_scan(session, user_url)
         else:
             nodes = core.global_db
             
@@ -332,21 +252,19 @@ async def handle():
         elif mode == 'hd':
             nodes = QualityEngine.filter_hd_streams(nodes)
             
-        if not nodes: return jsonify({"result": "No streams found for this criteria."})
+        if not nodes: return jsonify({"result": "No streams found."})
         
         manifest = OutputEngine.generate_self_updating_manifest(nodes)
-        
-        # External Upload Simulation
         try:
             async with session.post("https://dpaste.org/api/", data={'content': manifest, 'expiry_days': 1}) as r:
                 cloud_link = (await r.text()).strip() + "/raw"
         except: cloud_link = "Local Link Only"
 
         return jsonify({
-            "result": f"🚀 TITAN OMEGA: {mode.upper()} SUCCESS\n"
-                      f"------------------------------------------\n"
-                      f"MANIFEST LINK:\n{cloud_link}\n"
-                      f"------------------------------------------\n"
+            "result": f"🚀 TITAN OMEGA: {mode.upper()} SUCCESS\\n"
+                      f"------------------------------------------\\n"
+                      f"MANIFEST LINK:\\n{cloud_link}\\n"
+                      f"------------------------------------------\\n"
                       f"NODES: {len(nodes)} | STATUS: LIVE"
         })
 
@@ -354,22 +272,13 @@ async def handle():
 def get_playlist():
     return Response(OutputEngine.generate_self_updating_manifest(core.global_db), mimetype='text/plain')
 
-def start():
+def run_async_tasks():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.create_task(SelfHealing.recursive_update_cycle(core))
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+    loop.run_until_complete(recursive_update_cycle())
 
 if __name__ == '__main__':
-    # Override index for single file delivery
-    @app.route('/')
-    def index_override():
-        # This uses the INDEX_HTML defined in the previous block
-        return sys.modules[__name__].__dict__.get('INDEX_HTML', "TITAN CORE ACTIVE")
-    
-    # Injecting the HTML into the script context
-    import __main__
-    __main__.INDEX_HTML = """...""" # (The HTML code above)
-    
-    start()
+    from threading import Thread
+    Thread(target=run_async_tasks, daemon=True).start()
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
