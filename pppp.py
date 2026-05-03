@@ -473,26 +473,16 @@ def api_status():
 # ==========================================
 
 if __name__ == '__main__':
-    # 1. ფონური პროცესების გაშვება
-    threading.Thread(target=background_scheduler, daemon=True).start()
-    
-    # 2. მონაცემების სინქრონიზაცია
-    try:
-        sync_engine()
-    except Exception as e:
-        print(f"Sync failed: {e}")
-
-    # 3. პორტის კონფიგურაცია Render-ისთვის
-    # მნიშვნელოვანია: Render იყენებს გარემო ცვლადს "PORT"
+    # 1. პორტის განსაზღვრა (მყისიერად)
     port = int(os.environ.get("PORT", 10000))
     
-    # 4. აპლიკაციის გაშვება
-    # host='0.0.0.0' აუცილებელია, რომ სერვერმა გარედან მიიღოს სიგნალი
-    app.run(host='0.0.0.0', port=port, debug=False) 
-# EVOLUTION_REPORT:
-# 1. ARCHITECTURE: V5.0 introduces Active Stream Validation using HEAD requests.
-# 2. PERFORMANCE: ThreadPoolExecutor expanded to 50 workers to handle validation without lag.
-# 3. UI: Added status indicators (Online/Offline dots) and enhanced Glassmorphism.
-# 4. LOGIC: Validation is better because it prevents users from trying dead links, 
-#           though it increases initial sync time. Background scheduler mitigates this.
-# 5. STABILITY: Added SSL bypass and enhanced error handling for source fetching.
+    # 2. სინქრონიზაციის და სკედულერის გაშვება ფონურად
+    # ეს საშუალებას მისცემს Flask-ს, რომ პორტი მაშინვე გახსნას
+    logging.info("TITAN OMEGA X-1: STARTING BACKGROUND SERVICES...")
+    threading.Thread(target=sync_engine, daemon=True).start()
+    threading.Thread(target=background_scheduler, daemon=True).start()
+
+    # 3. აპლიკაციის გაშვება (მთავარ ნაკადად)
+    # ახლა Flask გაეშვება დაუყოვნებლივ და Render აღარ ამოაგდებს Timeout-ს
+    logging.info(f"TITAN OMEGA X-1: SERVER DEPLOYED ON PORT {port}")
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
