@@ -473,11 +473,22 @@ def api_status():
 # ==========================================
 
 if __name__ == '__main__':
+    # 1. ფონური პროცესების გაშვება
     threading.Thread(target=background_scheduler, daemon=True).start()
-    sync_engine()
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port, threaded=True)
+    
+    # 2. მონაცემების სინქრონიზაცია
+    try:
+        sync_engine()
+    except Exception as e:
+        print(f"Sync failed: {e}")
 
+    # 3. პორტის კონფიგურაცია Render-ისთვის
+    # მნიშვნელოვანია: Render იყენებს გარემო ცვლადს "PORT"
+    port = int(os.environ.get("PORT", 10000))
+    
+    # 4. აპლიკაციის გაშვება
+    # host='0.0.0.0' აუცილებელია, რომ სერვერმა გარედან მიიღოს სიგნალი
+    app.run(host='0.0.0.0', port=port, debug=False) 
 # EVOLUTION_REPORT:
 # 1. ARCHITECTURE: V5.0 introduces Active Stream Validation using HEAD requests.
 # 2. PERFORMANCE: ThreadPoolExecutor expanded to 50 workers to handle validation without lag.
