@@ -33,17 +33,35 @@ logging.basicConfig(
 )
 
 CONFIG = {
-    "VERSION": "TITAN OMEGA X-1 SUPREME V5.0",
+    "VERSION": "TITAN OMEGA X-1 SUPREME V5.1",
     "SOURCES": [
-        "https://iptv-org.github.io/iptv/index.m3u",
-        "https://iptv-org.github.io/iptv/languages/kat.m3u",
-        "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8",
-        "https://iptv-org.github.io/iptv/categories/movies.m3u",
-        "https://iptv-org.github.io/iptv/categories/news.m3u"
+        # --- GLOBAL & MULTI-LANGUAGE (მსოფლიო მასშტაბი) ---
+        "https://iptv-org.github.io/iptv/index.m3u", # ძირითადი გლობალური ბაზა
+        "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8", # Free-TV Global
+        "https://raw.githubusercontent.com/LITUATUI/IPTV/main/global.m3u", # Global Mix
+        
+        # --- GEORGIAN & REGIONAL (ლოკალური და მეზობელი ქვეყნები) ---
+        "https://iptv-org.github.io/iptv/languages/kat.m3u", # ქართული
+        "https://iptv-org.github.io/iptv/languages/tur.m3u", # თურქული
+        "https://iptv-org.github.io/iptv/languages/rus.m3u", # რუსული
+        "https://iptv-org.github.io/iptv/languages/aze.m3u", # აზერბაიჯანული
+        
+        # --- PREMIUM & CATEGORIES (ფილმები, სპორტი, დოკუმენტური) ---
+        "https://iptv-org.github.io/iptv/categories/movies.m3u", # კინოები
+        "https://iptv-org.github.io/iptv/categories/sports.m3u", # სპორტი (პრემიუმ არხების ხშირი წყარო)
+        "https://iptv-org.github.io/iptv/categories/documentary.m3u", # შემეცნებითი
+        "https://iptv-org.github.io/iptv/categories/news.m3u", # ახალი ამბები
+        "https://iptv-org.github.io/iptv/categories/music.m3u", # მუსიკალური
+        
+        # --- SELF-UPDATING AGGREGATORS (თვითგანახლებადი ლინკები) ---
+        "https://raw.githubusercontent.com/tomsalin/IPTV/master/IPTV.m3u", # განახლებადი პრემიუმ მიქსი
+        "https://raw.githubusercontent.com/LaneSh4d0w/IPTV/master/IPTV.m3u", # ავტომატური სკანირების შედეგები
+        "https://proxy.v-it.pro/iptv", # დინამიური პროქსი-პლეილისტი
+        "https://moiptv.7beez.com/lists/master.m3u" # გლობალური აგრეგატორი
     ],
     "EXCLUDED": ["Adult", "XXX", "18+", "Porn", "Sex", "Erotica"],
     "HD_KEYWORDS": ["HD", "1080", "720", "4K", "ULTRA", "FHD", "UHD"],
-    "MAX_WORKERS": 50, # Increased for validation
+    "MAX_WORKERS": 100, # Increased for validation
     "TIMEOUT": 5,      # Shorter timeout for faster validation
     "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "SYNC_INTERVAL": 1800, # 30 Minutes
@@ -189,7 +207,7 @@ DASHBOARD_HTML = BASE_STYLE + """
         </div>
     </div>
               
-    <div class="grid">
+        <div class="grid">
         <div class="card">
             <h3 style="color: var(--p);">FULL ARCHIVE</h3>
             <p style="font-size: 13px; color: #94a3b8;">ყველა ხელმისაწვდომი არხის სრული სია.</p>
@@ -200,17 +218,18 @@ DASHBOARD_HTML = BASE_STYLE + """
         <div class="card" style="border-color: var(--danger);">
             <h3 style="color: var(--danger);">ULTRA HD / HD</h3>
             <p style="font-size: 13px; color: #94a3b8;">მხოლოდ მაღალი ხარისხის ნაკადები.</p>
-            <a href="/view/hd" class="btn btn-blue" style="width:100%; background: var(--danger);">გახსნა</a>
+            <a href="/view/hd" class="btn btn-blue" style="width:100%; background: var(--danger);">გახსნა & გლობალური ძიება</a>
             <button class="btn btn-outline" style="width:100%; margin-top:10px; border-color: var(--danger); color: var(--danger);" onclick="copy('{{ host }}/m3u/hd')">M3U ბმული</button>
         </div>
 
         <div class="card" style="border-color: var(--s);">
             <h3 style="color: var(--s);">STANDARD (SD)</h3>
             <p style="font-size: 13px; color: #94a3b8;">ოპტიმიზირებულია მობილური ინტერნეტისთვის.</p>
-            <a href="/view/sd" class="btn btn-blue" style="width:100%; background: var(--s);">გახსნა</a>
+            <a href="/view/sd" class="btn btn-blue" style="width:100%; background: var(--s);">გახსნა & ოპტიმიზაცია</a>
             <button class="btn btn-outline" style="width:100%; margin-top:10px; border-color: var(--s); color: var(--s);" onclick="copy('{{ host }}/m3u/sd')">M3U ბმული</button>
         </div>
     </div>
+
 
     <div class="card" style="margin-top: 30px; text-align: center;">
         <h4 style="margin-top:0;">🔄 სისტემური მართვა</h4>
@@ -241,15 +260,30 @@ VIEW_HTML = BASE_STYLE + """
     <div class="grid" id="channelGrid">
         {% for ch in channels %}
         <div class="ch-card" data-name="{{ ch.name|lower }}">
-            {% if ch.is_hd %}<span class="badge">HD</span>{% endif %}
-            <img src="{{ ch.logo }}" class="ch-logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/5233/5233957.png'">
-            <div style="font-size: 14px; font-weight: bold; text-align: center; height: 40px; overflow: hidden;">
-                <span class="status-dot {{ 'online' if ch.status == 'online' else 'offline' }}"></span>
-                {{ ch.name }}
-            </div>
-            <input readonly class="copy-input" value="{{ ch.url }}">
-            <button class="btn btn-blue" style="width:100%; padding: 10px; font-size: 12px; margin-top:12px;" onclick="copy('{{ ch.url }}')">URL COPY</button>
-        </div>
+    <div style="position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 4px;">
+        {% if ch.is_hd %}<span class="badge" style="background: var(--p); color: #000; position: static;">HD</span>{% endif %}
+        <span class="badge" style="background: #334155; position: static;">{{ ch.country }}</span>
+    </div>
+
+    <img src="{{ ch.logo }}" class="ch-logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/5233/5233957.png'">
+    
+    <div style="font-size: 14px; font-weight: 700; text-align: center; height: 38px; overflow: hidden; color: var(--t); line-height: 1.2;">
+        <span class="status-dot {{ 'online' if ch.status == 'online' else 'offline' }}"></span>
+        {{ ch.name }}
+    </div>
+
+    <div style="font-size: 10px; color: var(--s); text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; font-weight: 600;">
+        {{ ch.group[:25] }}{% if ch.group|length > 25 %}...{% endif %}
+    </div>
+
+    <input readonly class="copy-input" value="{{ ch.url }}" style="background: rgba(0,0,0,0.3); border-color: rgba(0,242,254,0.1);">
+    
+    <div style="display: flex; gap: 8px; width: 100%; margin-top: 12px;">
+        <button class="btn btn-blue" style="flex: 2; padding: 10px; font-size: 11px;" onclick="copy('{{ ch.url }}')">COPY URL</button>
+        <a href="https://vlc-online.com/?url={{ ch.url }}" target="_blank" class="btn btn-outline" style="flex: 1; padding: 10px; font-size: 11px; border-color: var(--accent); color: var(--accent);">PLAY</a>
+    </div>
+</div>
+
         {% endfor %}
     </div>
 </div>
@@ -299,40 +333,48 @@ def validate_stream(channel):
     return channel
 
 def parse_m3u(text):
-    """Advanced M3U Parser with Regex Optimization"""
+    """Advanced M3U Parser: Smart Country & Category Detection"""
     extracted = []
+    # გაფართოებული რეგულარული გამოსახულებები
     logo_regex = re.compile(r'tvg-logo="([^"]+)"', re.I)
     group_regex = re.compile(r'group-title="([^"]+)"', re.I)
+    country_regex = re.compile(r'tvg-country="([^"]+)"', re.I)
+    lang_regex = re.compile(r'tvg-language="([^"]+)"', re.I)
     
     lines = text.splitlines()
     for i in range(len(lines)):
         if lines[i].startswith("#EXTINF"):
             info = lines[i]
-            name = info.split(',')[-1].strip() if ',' in info else "Unknown Titan Channel"
+            name = info.split(',')[-1].strip() if ',' in info else "TITAN_UNKNOWN"
             
+            # ექსკლუზიური ფილტრაცია (Safety First)
             if any(ex.lower() in info.lower() or ex.lower() in name.lower() for ex in CONFIG["EXCLUDED"]):
                 continue
                 
-            logo_match = logo_regex.search(info)
-            logo = logo_match.group(1) if logo_match else ""
-            
-            group_match = group_regex.search(info)
-            group = group_match.group(1) if group_match else "General"
-            
+            logo = logo_match.group(1) if (logo_match := logo_regex.search(info)) else ""
+            group = group_match.group(1) if (group_match := group_regex.search(info)) else "Global Mix"
+            country = country_match.group(1) if (country_match := country_regex.search(info)) else "INT"
+            lang = lang_match.group(1) if (lang_match := lang_regex.search(info)) else "Multi"
+
             if i + 1 < len(lines):
                 url = lines[i+1].strip()
                 if url.startswith("http"):
+                    # ხარისხის ჭკვიანი იდენტიფიკაცია
                     is_hd = any(k.lower() in info.lower() or k in name.upper() for k in CONFIG["HD_KEYWORDS"])
+                    
                     extracted.append({
                         "name": name,
                         "logo": logo,
                         "url": url,
                         "is_hd": is_hd,
-                        "group": group,
+                        "group": group.strip(),
+                        "country": country.upper().strip(),
+                        "language": lang.strip(),
                         "raw_info": info,
                         "status": "checking"
                     })
     return extracted
+
 
 def fetch_source(url):
     """Secure Source Fetching with Retry Logic"""
@@ -415,6 +457,9 @@ def index():
 
 @app.route('/view/<mode>')
 def view_channels(mode):
+    if not cache["channels"]:
+        sync_engine()
+
     if mode == "hd":
         filtered = [c for c in cache["channels"] if c["is_hd"]]
     elif mode == "sd":
@@ -422,8 +467,15 @@ def view_channels(mode):
     else:
         filtered = cache["channels"]
     
-    # Sort online first
-    filtered.sort(key=lambda x: x["status"] == "online", reverse=True)
+    # TITAN OMEGA ჭკვიანი სორტირება:
+    # ონლაინ არხები პირველ ადგილზე, შემდეგ ქვეყნების მიხედვით (მაგ: GE, TR, US...)
+    filtered.sort(key=lambda x: (
+        x["status"] != "online", 
+        x["country"] != "GE", # საქართველოს არხები ყოველთვის თავში
+        x["country"], 
+        x["group"], 
+        x["name"]
+    ))
     
     return render_template_string(VIEW_HTML, channels=filtered, mode=mode)
 
