@@ -526,13 +526,6 @@ def api_status():
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
-    
-    # გაშვებისთანავე ვამბობთ, რომ სერვერი მზადაა
-    logging.info(f"TITAN OMEGA X-1: DEPLOYING ON PORT {port}")
-    
-    # სინქრონიზაცია გავუშვათ ცალკე, რომ Flask-ის ჩართვას არ დაელოდოს
+    # სინქრონიზაციას ვუშვებთ ფონურად (threading), რომ პორტი მაშინვე გაიხსნას
     threading.Thread(target=sync_engine, daemon=True).start()
-    threading.Thread(target=background_scheduler, daemon=True).start()
-
-    # Flask გაეშვება მაშინვე!
-    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+    app.run(host='0.0.0.0', port=port)
