@@ -61,11 +61,11 @@ CONFIG = {
     ],
     "EXCLUDED": ["Adult", "XXX", "18+", "Porn", "Sex", "Erotica"],
     "HD_KEYWORDS": ["HD", "1080", "720", "4K", "ULTRA", "FHD", "UHD"],
-    "MAX_WORKERS": 100, # Increased for validation
-    "TIMEOUT": 5,      # Shorter timeout for faster validation
+    "MAX_WORKERS": 15,      # დაწეულია 100-დან 15-მდე RAM-ის დასაზოგად
+    "TIMEOUT": 3,           # შემცირებულია 5-დან 3 წამამდე, რომ "გაჭედილმა" ლინკებმა რესურსი არ დაიკავოს
     "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "SYNC_INTERVAL": 1800, # 30 Minutes
-    "VALIDATE_STREAMS": True # NEW: Active validation toggle
+    "SYNC_INTERVAL": 3600,  # გაზრდილია 1 საათამდე, რომ სერვერი ხშირად არ დაიტვირთოს გადამოწმებით
+    "VALIDATE_STREAMS": True # ვალიდაცია რჩება ჩართული, მაგრამ უფრო "ფრთხილ" რეჟიმში
 }
 
 # GLOBAL STATE
@@ -525,7 +525,16 @@ def api_status():
 # ==========================================
 
 if __name__ == '__main__':
+    # 1. პორტის განსაზღვრა (მყისიერად)
     port = int(os.environ.get("PORT", 10000))
-    # სინქრონიზაციას ვუშვებთ ფონურად (threading), რომ პორტი მაშინვე გაიხსნას
+    
+    # 2. სინქრონიზაციის და სკედულერის გაშვება ფონურად
+    # ეს საშუალებას მისცემს Flask-ს, რომ პორტი მაშინვე გახსნას
+    logging.info("TITAN OMEGA X-1: STARTING BACKGROUND SERVICES...")
     threading.Thread(target=sync_engine, daemon=True).start()
-    app.run(host='0.0.0.0', port=port)
+    threading.Thread(target=background_scheduler, daemon=True).start()
+
+    # 3. აპლიკაციის გაშვება (მთავარ ნაკადად)
+    # ახლა Flask გაეშვება დაუყოვნებლივ და Render აღარ ამოაგდებს Timeout-ს
+    logging.info(f"TITAN OMEGA X-1: SERVER DEPLOYED ON PORT {port}")
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
