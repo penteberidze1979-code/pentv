@@ -1,14 +1,3 @@
-# [NEURAL_PULSE]
-# იდენტიფიკაცია: TITAN OMEGA X-1 SUPREME V5.0
-# სტატუსი: ARCHITECTURAL_ASCENSION_COMPLETE
-# ევოლუციური უპირატესობა: ACTIVE_STREAM_VALIDATION, ASYNCHRONOUS_WARP_PROCESSING, 
-#                        DYNAMIC_LOAD_BALANCING, SUPREME_VISUAL_AUTHORITY_V5.
-
-""" 
-INSTALLATION COMMANDS:
-pip install flask flask-compress requests concurrent.futures logging
-"""
-
 import os
 import time
 import requests
@@ -299,13 +288,11 @@ VIEW_HTML = BASE_STYLE + """
 # ==========================================
 
 def validate_stream(channel):
-    """NEW: Checks if the stream URL is actually reachable"""
     if not CONFIG["VALIDATE_STREAMS"]:
         channel["status"] = "unknown"
         return channel
     
     try:
-        # We use HEAD request to save bandwidth, fallback to GET with stream=True
         r = requests.head(
             channel["url"], 
             timeout=CONFIG["TIMEOUT"], 
@@ -323,9 +310,7 @@ def validate_stream(channel):
     return channel
 
 def parse_m3u(text):
-    """Advanced M3U Parser: Smart Country & Category Detection"""
     extracted = []
-    # გაფართოებული რეგულარული გამოსახულებები
     logo_regex = re.compile(r'tvg-logo="([^"]+)"', re.I)
     group_regex = re.compile(r'group-title="([^"]+)"', re.I)
     country_regex = re.compile(r'tvg-country="([^"]+)"', re.I)
@@ -337,19 +322,24 @@ def parse_m3u(text):
             info = lines[i]
             name = info.split(',')[-1].strip() if ',' in info else "TITAN_UNKNOWN"
             
-            # ექსკლუზიური ფილტრაცია (Safety First)
             if any(ex.lower() in info.lower() or ex.lower() in name.lower() for ex in CONFIG["EXCLUDED"]):
                 continue
                 
-            logo = logo_match.group(1) if (logo_match := logo_regex.search(info)) else ""
-            group = group_match.group(1) if (group_match := group_regex.search(info)) else "Global Mix"
-            country = country_match.group(1) if (country_match := country_regex.search(info)) else "INT"
-            lang = lang_match.group(1) if (lang_match := lang_regex.search(info)) else "Multi"
+            logo_match = logo_regex.search(info)
+            logo = logo_match.group(1) if logo_match else ""
+            
+            group_match = group_regex.search(info)
+            group = group_match.group(1) if group_match else "Global Mix"
+            
+            country_match = country_regex.search(info)
+            country = country_match.group(1) if country_match else "INT"
+            
+            lang_match = lang_regex.search(info)
+            lang = lang_match.group(1) if lang_match else "Multi"
 
             if i + 1 < len(lines):
                 url = lines[i+1].strip()
                 if url.startswith("http"):
-                    # ხარისხის ჭკვიანი იდენტიფიკაცია
                     is_hd = any(k.lower() in info.lower() or k in name.upper() for k in CONFIG["HD_KEYWORDS"])
                     
                     extracted.append({
@@ -367,7 +357,6 @@ def parse_m3u(text):
 
 
 def fetch_source(url):
-    """Secure Source Fetching with Retry Logic"""
     for attempt in range(2):
         try:
             r = requests.get(
@@ -384,7 +373,6 @@ def fetch_source(url):
     return []
 
 def sync_engine():
-    """Core Synchronization Logic - Threaded Execution & Validation"""
     cache["status"] = "SYNCING"
     logging.info("TITAN OMEGA X-1: INITIATING GLOBAL SYNC & VALIDATION...")
     
@@ -395,7 +383,6 @@ def sync_engine():
             res = f.result()
             all_ch.extend(res)
             
-    # Deduplication
     seen_urls = set()
     unique_ch = []
     for c in all_ch:
@@ -403,7 +390,6 @@ def sync_engine():
             unique_ch.append(c)
             seen_urls.add(c['url'])
     
-    # NEW: Active Validation Phase
     logging.info(f"TITAN OMEGA X-1: VALIDATING {len(unique_ch)} STREAMS...")
     validated_ch = []
     online_count = 0
@@ -423,14 +409,9 @@ def sync_engine():
     logging.info(f"TITAN OMEGA X-1: SYNC COMPLETE. {len(validated_ch)} LOADED. {online_count} ONLINE.")
 
 def background_scheduler():
-    """Infinite Discovery Provision"""
     while True:
         time.sleep(CONFIG["SYNC_INTERVAL"])
         sync_engine()
-
-# ==========================================
-# ROUTES
-# ==========================================
 
 @app.route('/')
 def index():
@@ -457,11 +438,9 @@ def view_channels(mode):
     else:
         filtered = cache["channels"]
     
-    # TITAN OMEGA ჭკვიანი სორტირება:
-    # ონლაინ არხები პირველ ადგილზე, შემდეგ ქვეყნების მიხედვით (მაგ: GE, TR, US...)
     filtered.sort(key=lambda x: (
         x["status"] != "online", 
-        x["country"] != "GE", # საქართველოს არხები ყოველთვის თავში
+        x["country"] != "GE",
         x["country"], 
         x["group"], 
         x["name"]
@@ -477,9 +456,6 @@ def get_m3u(mode):
         filtered = [c for c in cache["channels"] if not c["is_hd"]]
     else:
         filtered = cache["channels"]
-        
-    # Optional: Only include online channels in M3U
-    # filtered = [c for c in filtered if c["status"] == "online"]
             
     m3u_content = "#EXTM3U\n"
     for c in filtered:
@@ -510,21 +486,10 @@ def api_status():
         "version": CONFIG["VERSION"]
     })
 
-# ==========================================
-# INITIALIZATION
-# ==========================================
-
 if __name__ == '__main__':
-    # 1. პორტის განსაზღვრა (მყისიერად)
     port = int(os.environ.get("PORT", 10000))
-    
-    # 2. სინქრონიზაციის და სკედულერის გაშვება ფონურად
-    # ეს საშუალებას მისცემს Flask-ს, რომ პორტი მაშინვე გახსნას
     logging.info("TITAN OMEGA X-1: STARTING BACKGROUND SERVICES...")
     threading.Thread(target=sync_engine, daemon=True).start()
     threading.Thread(target=background_scheduler, daemon=True).start()
-
-    # 3. აპლიკაციის გაშვება (მთავარ ნაკადად)
-    # ახლა Flask გაეშვება დაუყოვნებლივ და Render აღარ ამოაგდებს Timeout-ს
     logging.info(f"TITAN OMEGA X-1: SERVER DEPLOYED ON PORT {port}")
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
