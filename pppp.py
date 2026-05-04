@@ -34,9 +34,8 @@ CONFIG = {
         "https://iptv-org.github.io/iptv/categories/news.m3u",
         "https://iptv-org.github.io/iptv/categories/music.m3u",
         "https://raw.githubusercontent.com/tomsalin/IPTV/master/IPTV.m3u",
-        "https://raw.githubusercontent.com/LaneSh4d0w/IPTV/master/IPTV.m3u",
-        "https://proxy.v-it.pro/iptv",
-        "https://moiptv.7beez.com/lists/master.m3u"
+        "https://raw.githubusercontent.com/LaneSh4d0w/IPTV/master/IPTV.m3u"
+        
     ],
     "EXCLUDED": ["Adult", "XXX", "18+", "Porn", "Sex", "Erotica"],
     "HD_KEYWORDS": ["HD", "1080", "720", "4K", "ULTRA", "FHD", "UHD"],
