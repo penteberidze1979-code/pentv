@@ -33,39 +33,29 @@ logging.basicConfig(
 )
 
 CONFIG = {
-    "VERSION": "TITAN OMEGA X-1 SUPREME V5.1",
+    "VERSION": "TITAN OMEGA X-1 SUPREME V5.4",
     "SOURCES": [
-        # --- GLOBAL & MULTI-LANGUAGE (მსოფლიო მასშტაბი) ---
-        "https://iptv-org.github.io/iptv/index.m3u", # ძირითადი გლობალური ბაზა
-        "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8", # Free-TV Global
-        "https://raw.githubusercontent.com/LITUATUI/IPTV/main/global.m3u", # Global Mix
-        
-        # --- GEORGIAN & REGIONAL (ლოკალური და მეზობელი ქვეყნები) ---
-        "https://iptv-org.github.io/iptv/languages/kat.m3u", # ქართული
-        "https://iptv-org.github.io/iptv/languages/tur.m3u", # თურქული
-        "https://iptv-org.github.io/iptv/languages/rus.m3u", # რუსული
-        "https://iptv-org.github.io/iptv/languages/aze.m3u", # აზერბაიჯანული
-        
-        # --- PREMIUM & CATEGORIES (ფილმები, სპორტი, დოკუმენტური) ---
-        "https://iptv-org.github.io/iptv/categories/movies.m3u", # კინოები
-        "https://iptv-org.github.io/iptv/categories/sports.m3u", # სპორტი (პრემიუმ არხების ხშირი წყარო)
-        "https://iptv-org.github.io/iptv/categories/documentary.m3u", # შემეცნებითი
-        "https://iptv-org.github.io/iptv/categories/news.m3u", # ახალი ამბები
-        "https://iptv-org.github.io/iptv/categories/music.m3u", # მუსიკალური
-        
-        # --- SELF-UPDATING AGGREGATORS (თვითგანახლებადი ლინკები) ---
-        "https://raw.githubusercontent.com/tomsalin/IPTV/master/IPTV.m3u", # განახლებადი პრემიუმ მიქსი
-        "https://raw.githubusercontent.com/LaneSh4d0w/IPTV/master/IPTV.m3u", # ავტომატური სკანირების შედეგები
-        "https://proxy.v-it.pro/iptv", # დინამიური პროქსი-პლეილისტი
-        "https://moiptv.7beez.com/lists/master.m3u" # გლობალური აგრეგატორი
+        "https://iptv-org.github.io/iptv/languages/kat.m3u",
+        "https://iptv-org.github.io/iptv/languages/tur.m3u",
+        "https://iptv-org.github.io/iptv/languages/rus.m3u",
+        "https://iptv-org.github.io/iptv/languages/aze.m3u",
+        "https://iptv-org.github.io/iptv/categories/movies.m3u",
+        "https://iptv-org.github.io/iptv/categories/sports.m3u",
+        "https://iptv-org.github.io/iptv/categories/documentary.m3u",
+        "https://iptv-org.github.io/iptv/categories/news.m3u",
+        "https://iptv-org.github.io/iptv/categories/music.m3u",
+        "https://raw.githubusercontent.com/tomsalin/IPTV/master/IPTV.m3u",
+        "https://raw.githubusercontent.com/LaneSh4d0w/IPTV/master/IPTV.m3u",
+        "https://proxy.v-it.pro/iptv",
+        "https://moiptv.7beez.com/lists/master.m3u"
     ],
     "EXCLUDED": ["Adult", "XXX", "18+", "Porn", "Sex", "Erotica"],
     "HD_KEYWORDS": ["HD", "1080", "720", "4K", "ULTRA", "FHD", "UHD"],
-    "MAX_WORKERS": 15,      # დაწეულია 100-დან 15-მდე RAM-ის დასაზოგად
-    "TIMEOUT": 3,           # შემცირებულია 5-დან 3 წამამდე, რომ "გაჭედილმა" ლინკებმა რესურსი არ დაიკავოს
-    "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "SYNC_INTERVAL": 3600,  # გაზრდილია 1 საათამდე, რომ სერვერი ხშირად არ დაიტვირთოს გადამოწმებით
-    "VALIDATE_STREAMS": True # ვალიდაცია რჩება ჩართული, მაგრამ უფრო "ფრთხილ" რეჟიმში
+    "MAX_WORKERS": 10,
+    "TIMEOUT": 3,
+    "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "SYNC_INTERVAL": 3600,
+    "VALIDATE_STREAMS": True
 }
 
 # GLOBAL STATE
