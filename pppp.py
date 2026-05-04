@@ -525,16 +525,14 @@ def api_status():
 # ==========================================
 
 if __name__ == '__main__':
-    # 1. პორტის განსაზღვრა (მყისიერად)
     port = int(os.environ.get("PORT", 10000))
     
-    # 2. სინქრონიზაციის და სკედულერის გაშვება ფონურად
-    # ეს საშუალებას მისცემს Flask-ს, რომ პორტი მაშინვე გახსნას
-    logging.info("TITAN OMEGA X-1: STARTING BACKGROUND SERVICES...")
+    # გაშვებისთანავე ვამბობთ, რომ სერვერი მზადაა
+    logging.info(f"TITAN OMEGA X-1: DEPLOYING ON PORT {port}")
+    
+    # სინქრონიზაცია გავუშვათ ცალკე, რომ Flask-ის ჩართვას არ დაელოდოს
     threading.Thread(target=sync_engine, daemon=True).start()
     threading.Thread(target=background_scheduler, daemon=True).start()
 
-    # 3. აპლიკაციის გაშვება (მთავარ ნაკადად)
-    # ახლა Flask გაეშვება დაუყოვნებლივ და Render აღარ ამოაგდებს Timeout-ს
-    logging.info(f"TITAN OMEGA X-1: SERVER DEPLOYED ON PORT {port}")
+    # Flask გაეშვება მაშინვე!
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
